@@ -36,6 +36,7 @@ namespace StaticCFG { // never reset after init
     const double bottom_bound = 1e80;
     const uint16_t min_body_radius_px = 1, max_body_radius_px = 255;
     const double min_iter_len = 1e-50, max_iter_len = 1e50;
+    const double speedup_factor = 2.0;
     const double zoom_factor = 1.16;
     const double move_factor = 0.03;
     const uint32_t fps_update_period = 30;     // fps info will be updated every 'fps_update_period' frames
@@ -55,6 +56,7 @@ namespace StaticCFG { // never reset after init
         std::cout << "\tAspect ratio: " << aspect_ratio << std::endl;
         std::cout << "\tMax FPS: " << max_fps << std::endl;
         std::cout << "\tWindow name: " << window_name << std::endl;
+        std::cout << "\tSpeedup factor: " << speedup_factor << std::endl;
         std::cout << "\tZoom factor: " << zoom_factor << std::endl;
         std::cout << "\tMove factor: " << move_factor << std::endl;
         std::cout << "\tFPS info update period[frames]: " << fps_update_period << std::endl;
@@ -617,11 +619,11 @@ void engine_loop(sf::RenderWindow& window, Body* bodies, uint32_t body_count) {
                     break;
                 case KEY::LESS:
                     if (MutCFG::iter_len > StaticCFG::min_iter_len)
-                        MutCFG::iter_len /= 2;
+                        MutCFG::iter_len /= StaticCFG::speedup_factor;
                     break;
                 case KEY::MORE:
                     if (MutCFG::iter_len < StaticCFG::max_iter_len)
-                        MutCFG::iter_len *= 2;
+                        MutCFG::iter_len *= StaticCFG::speedup_factor;
                     break;
                 case KEY::UP:
                 case KEY::W:
