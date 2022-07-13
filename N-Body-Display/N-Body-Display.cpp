@@ -42,7 +42,7 @@ namespace StaticCFG { // never reset after init
     const double zoom_factor = 1.16;
     const double move_factor = 0.03;
     const uint32_t fps_update_period = 30;     // fps info will be updated every 'fps_update_period' frames
-    const double grid_spacing_factor = 10.0;
+    const double grid_spacing_factor = 4.0;
 
     std::string input_file = "../BodyFiles/in/a12a.tsv";
     std::string output_file = "../BodyFiles/out/bh_omp_out.tsv";
@@ -450,6 +450,7 @@ void update_counters(uint32_t iteration) {
     }
 }
 
+/* TODO: Reduce FLOPS by calculating once the PIXEL spacing */
 void draw_standard_grid(sf::RenderWindow& window) {
     auto horizontal_line = sf::RectangleShape({ float(StaticCFG::h_res), 1 });
     auto vertical_line = sf::RectangleShape({ 1, float(StaticCFG::v_res) });
@@ -457,7 +458,7 @@ void draw_standard_grid(sf::RenderWindow& window) {
     vertical_line.setFillColor(sf::Color(50, 50, 50));
 
     const double min_dim = std::min(display_bound.width, display_bound.height);
-    const double spacing = pow(10, floor(log10(min_dim)) - 1);
+    const double spacing = pow(StaticCFG::grid_spacing_factor, floor(log(min_dim, StaticCFG::grid_spacing_factor)) - 1);
     const double x2 = display_bound.width + display_bound.left;
     double x = ceil(display_bound.left / spacing) * spacing;
     while (x < x2) {
@@ -509,7 +510,6 @@ void draw_standard_grid(sf::RenderWindow& window) {
 //        //y += spacing;
 //    }
 //}
-
 
 
 void draw_xy_axis(sf::RenderWindow& window) {
@@ -773,7 +773,6 @@ void print_info(void) {
 }
 
 int main(int argc, const char** argv){
-    std::cout << log(1234567, 10) << " vs " << log10(1234567) << std::endl;
     std::vector<Body> bodies;
     parse_args(argc, argv);
     print_info();
