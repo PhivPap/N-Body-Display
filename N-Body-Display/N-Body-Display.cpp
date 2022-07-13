@@ -16,10 +16,9 @@ namespace KEY {
     enum { ESC = 36, A = 0, D = 3, F = 5, G = 6, I = 8, O = 14, P = 15, R = 17, S = 18, W = 22, LESS = 49, MORE = 50, LEFT = 71, RIGHT = 72, UP = 73, DOWN = 74 };
 }
 
-const uint16_t MIN_BODY_RADIUS_PX = 1, MAX_BODY_RADIUS_PX = 255;
-const double MIN_ITER_LEN = 1e-50, MAX_ITER_LEN = 1e50;
 
-namespace FinalCFG { // never reset after init
+
+namespace StaticCFG { // never reset after init
     uint32_t h_res = 1600;
     uint32_t v_res = 900;
     double aspect_ratio = double(h_res) / v_res;
@@ -35,12 +34,15 @@ namespace FinalCFG { // never reset after init
     const double right_bound = 1e80;
     const double top_bound = -1e80;
     const double bottom_bound = 1e80;
+    const uint16_t min_body_radius_px = 1, max_body_radius_px = 255;
+    const double min_iter_len = 1e-50, max_iter_len = 1e50;
     const double zoom_factor = 1.16;
     const double move_factor = 0.03;
-    const uint32_t fps_update_freq = 30;     // fps info will be updated every 'fps_update_freq' frames
+    const uint32_t fps_update_period = 30;     // fps info will be updated every 'fps_update_period' frames
+    const double grid_spacing_factor = 10.0;
 
     std::string input_file = "../BodyFiles/in/a12a.tsv";
-    std::string output_file = "../../../BodyFiles/out/bh_omp_out.tsv";
+    std::string output_file = "../BodyFiles/out/bh_omp_out.tsv";
     uint32_t iterations = 100000;
     uint32_t thread_count = 8;
     double theta = 0.50;
@@ -53,6 +55,10 @@ namespace FinalCFG { // never reset after init
         std::cout << "\tAspect ratio: " << aspect_ratio << std::endl;
         std::cout << "\tMax FPS: " << max_fps << std::endl;
         std::cout << "\tWindow name: " << window_name << std::endl;
+        std::cout << "\tZoom factor: " << zoom_factor << std::endl;
+        std::cout << "\tMove factor: " << move_factor << std::endl;
+        std::cout << "\tFPS info update period[frames]: " << fps_update_period << std::endl;
+        std::cout << "\tGrid spacing factor: " << grid_spacing_factor << std::endl;
         std::cout << "\tInput file: " << input_file << std::endl;
         std::cout << "\tOutput file: " << output_file << std::endl;
         std::cout << "\tTotal iterations (steps): " << iterations << std::endl;
@@ -68,9 +74,9 @@ namespace MutCFG {
     double iter_len = 1e4;
 
     void print(void) {
+        std::cout << "\tCamera follow largest body in scope: " << (camera_follow_body ? "enabled" : "disabled") << std::endl;
         std::cout << "\tBody radius[px]: " << body_radius_px << std::endl;
-        const char* s = body_coloring ? "enabled" : "disabled";
-        std::cout << "\tBody coloring: " << s << std::endl;
+        std::cout << "\tBody coloring: " << (body_coloring ? "enabled" : "disabled") << std::endl;
         std::cout << "\tTime step[s]: " << iter_len << std::endl;
     }
 
@@ -206,7 +212,7 @@ void compute_body_forces(Quad* quad, Body* body, double& Fx, double& Fy) {
     const auto quad_diag_2 = quad->diag_len_2;
     const auto distance_2 = body->coords.distance_to_2(quad->center_of_mass);
 
-    if (quad_diag_2 < FinalCFG::theta_2 * distance_2){
+    if (quad_diag_2 < StaticCFG::theta_2 * distance_2){
         compute_body2quad_attraction(body, quad, Fx, Fy, distance_2);
     }
     else {
@@ -234,7 +240,7 @@ void update_body_velocities(Quad* root, Body* bodies, uint32_t body_count, doubl
 
 void simulate(Body* bodies, uint32_t body_count, double time_step){
     merge_distance = time_step * 1e6;   // the more time between time_steps, the more severe collision check becomes
-    Quad::set_pool(FinalCFG::quad_pool_size);
+    Quad::set_pool(StaticCFG::quad_pool_size);
     const auto area = update_body_positions_get_area(bodies, body_count, time_step);
     Quad root(bodies, body_count, area);
     update_body_velocities(&root, bodies, body_count, time_step);
@@ -262,37 +268,37 @@ sf::Font def_font;
 sf::Rect<double> display_bound;
 
 void init_gui(const Body* bodies, uint32_t body_count) {
-    if (!def_font.loadFromFile(FinalCFG::font_path))
+    if (!def_font.loadFromFile(StaticCFG::font_path))
         exit(1);
     const uint32_t cfg_stats_dist = 200;
     float text_y = 0;
     body_count_gui = body_count;
     grid_status_str = MutCFG::GridStatus::grid_status_to_str(MutCFG::GridStatus::grid_status);
 
-    display_texts.push_back(DisplayText("Iterations:  ", &FinalCFG::iterations, DisplayText::RefType::UINT32, { 5, text_y += FinalCFG::font_y_spacing }, def_font, FinalCFG::font_size));
-    display_texts.push_back(DisplayText("Time step:   ", &iter_len_str, DisplayText::RefType::STR, { 5, text_y += FinalCFG::font_y_spacing }, def_font, FinalCFG::font_size));
-    display_texts.push_back(DisplayText("Theta:       ", &FinalCFG::theta, DisplayText::RefType::DOUBLE, { 5, text_y += FinalCFG::font_y_spacing }, def_font, FinalCFG::font_size));
-    display_texts.push_back(DisplayText("Threads:     ", &actual_threads, DisplayText::RefType::UINT32, { 5, text_y += FinalCFG::font_y_spacing }, def_font, FinalCFG::font_size));
-    display_texts.push_back(DisplayText("Bodies:      ", &body_count_gui, DisplayText::RefType::UINT32, { 5, text_y += FinalCFG::font_y_spacing }, def_font, FinalCFG::font_size));
-    display_texts.push_back(DisplayText("Max FPS:     ", &FinalCFG::max_fps, DisplayText::RefType::UINT32, { 5, text_y += FinalCFG::font_y_spacing }, def_font, FinalCFG::font_size));
-    display_texts.push_back(DisplayText("Width[px]:   ", &FinalCFG::h_res, DisplayText::RefType::UINT32, { 5, text_y += FinalCFG::font_y_spacing }, def_font, FinalCFG::font_size));
-    display_texts.push_back(DisplayText("Heigh[px]:   ", &FinalCFG::v_res, DisplayText::RefType::UINT32, { 5, text_y += FinalCFG::font_y_spacing }, def_font, FinalCFG::font_size));
-    display_texts.push_back(DisplayText("Body R[px]:  ", &MutCFG::body_radius_px, DisplayText::RefType::UINT32, { 5, text_y += FinalCFG::font_y_spacing }, def_font, FinalCFG::font_size));
-    display_texts.push_back(DisplayText("Colorcoding: ", &MutCFG::body_coloring, DisplayText::RefType::BOOL, { 5, text_y += FinalCFG::font_y_spacing }, def_font, FinalCFG::font_size));
-    display_texts.push_back(DisplayText("Track heavy: ", &MutCFG::camera_follow_body, DisplayText::RefType::BOOL, { 5, text_y += FinalCFG::font_y_spacing }, def_font, FinalCFG::font_size));
-    display_texts.push_back(DisplayText("Grid:        ", &grid_status_str, DisplayText::RefType::STR, { 5, text_y += FinalCFG::font_y_spacing }, def_font, FinalCFG::font_size));
+    display_texts.push_back(DisplayText("Iterations:  ", &StaticCFG::iterations, DisplayText::RefType::UINT32, { 5, text_y += StaticCFG::font_y_spacing }, def_font, StaticCFG::font_size));
+    display_texts.push_back(DisplayText("Time step:   ", &iter_len_str, DisplayText::RefType::STR, { 5, text_y += StaticCFG::font_y_spacing }, def_font, StaticCFG::font_size));
+    display_texts.push_back(DisplayText("Theta:       ", &StaticCFG::theta, DisplayText::RefType::DOUBLE, { 5, text_y += StaticCFG::font_y_spacing }, def_font, StaticCFG::font_size));
+    display_texts.push_back(DisplayText("Threads:     ", &actual_threads, DisplayText::RefType::UINT32, { 5, text_y += StaticCFG::font_y_spacing }, def_font, StaticCFG::font_size));
+    display_texts.push_back(DisplayText("Bodies:      ", &body_count_gui, DisplayText::RefType::UINT32, { 5, text_y += StaticCFG::font_y_spacing }, def_font, StaticCFG::font_size));
+    display_texts.push_back(DisplayText("Max FPS:     ", &StaticCFG::max_fps, DisplayText::RefType::UINT32, { 5, text_y += StaticCFG::font_y_spacing }, def_font, StaticCFG::font_size));
+    display_texts.push_back(DisplayText("Width[px]:   ", &StaticCFG::h_res, DisplayText::RefType::UINT32, { 5, text_y += StaticCFG::font_y_spacing }, def_font, StaticCFG::font_size));
+    display_texts.push_back(DisplayText("Heigh[px]:   ", &StaticCFG::v_res, DisplayText::RefType::UINT32, { 5, text_y += StaticCFG::font_y_spacing }, def_font, StaticCFG::font_size));
+    display_texts.push_back(DisplayText("Body R[px]:  ", &MutCFG::body_radius_px, DisplayText::RefType::UINT32, { 5, text_y += StaticCFG::font_y_spacing }, def_font, StaticCFG::font_size));
+    display_texts.push_back(DisplayText("Colorcoding: ", &MutCFG::body_coloring, DisplayText::RefType::BOOL, { 5, text_y += StaticCFG::font_y_spacing }, def_font, StaticCFG::font_size));
+    display_texts.push_back(DisplayText("Track heavy: ", &MutCFG::camera_follow_body, DisplayText::RefType::BOOL, { 5, text_y += StaticCFG::font_y_spacing }, def_font, StaticCFG::font_size));
+    display_texts.push_back(DisplayText("Grid:        ", &grid_status_str, DisplayText::RefType::STR, { 5, text_y += StaticCFG::font_y_spacing }, def_font, StaticCFG::font_size));
     text_y += cfg_stats_dist;
-    display_texts.push_back(DisplayText("Elapsed[s]:  ", &elapsed, DisplayText::RefType::DOUBLE, { 5, text_y += FinalCFG::font_y_spacing }, def_font, FinalCFG::font_size));
-    display_texts.push_back(DisplayText("Simulated:   ", &sim_elapsed_str, DisplayText::RefType::STR, { 5, text_y += FinalCFG::font_y_spacing }, def_font, FinalCFG::font_size));
-    display_texts.push_back(DisplayText("Frames:      ", &frames, DisplayText::RefType::UINT32, { 5, text_y += FinalCFG::font_y_spacing }, def_font, FinalCFG::font_size));
-    display_texts.push_back(DisplayText("CPU load:    ", &cpu_usage_str, DisplayText::RefType::STR, { 5, text_y += FinalCFG::font_y_spacing }, def_font, FinalCFG::font_size));
-    display_texts.push_back(DisplayText("FPS:         ", &fps, DisplayText::RefType::DOUBLE, { 5, text_y += FinalCFG::font_y_spacing }, def_font, FinalCFG::font_size));
-    display_texts.push_back(DisplayText("Time ratio:  ", &time_ratio_str, DisplayText::RefType::STR, { 5, text_y += FinalCFG::font_y_spacing }, def_font, FinalCFG::font_size));
-    display_texts.push_back(DisplayText("Width:       ", &display_width_str, DisplayText::RefType::STR, { 5, text_y += FinalCFG::font_y_spacing }, def_font, FinalCFG::font_size));
-    display_texts.push_back(DisplayText("Height:      ", &display_height_str, DisplayText::RefType::STR, { 5, text_y += FinalCFG::font_y_spacing }, def_font, FinalCFG::font_size));
+    display_texts.push_back(DisplayText("Elapsed[s]:  ", &elapsed, DisplayText::RefType::DOUBLE, { 5, text_y += StaticCFG::font_y_spacing }, def_font, StaticCFG::font_size));
+    display_texts.push_back(DisplayText("Simulated:   ", &sim_elapsed_str, DisplayText::RefType::STR, { 5, text_y += StaticCFG::font_y_spacing }, def_font, StaticCFG::font_size));
+    display_texts.push_back(DisplayText("Frames:      ", &frames, DisplayText::RefType::UINT32, { 5, text_y += StaticCFG::font_y_spacing }, def_font, StaticCFG::font_size));
+    display_texts.push_back(DisplayText("CPU load:    ", &cpu_usage_str, DisplayText::RefType::STR, { 5, text_y += StaticCFG::font_y_spacing }, def_font, StaticCFG::font_size));
+    display_texts.push_back(DisplayText("FPS:         ", &fps, DisplayText::RefType::DOUBLE, { 5, text_y += StaticCFG::font_y_spacing }, def_font, StaticCFG::font_size));
+    display_texts.push_back(DisplayText("Time ratio:  ", &time_ratio_str, DisplayText::RefType::STR, { 5, text_y += StaticCFG::font_y_spacing }, def_font, StaticCFG::font_size));
+    display_texts.push_back(DisplayText("Width:       ", &display_width_str, DisplayText::RefType::STR, { 5, text_y += StaticCFG::font_y_spacing }, def_font, StaticCFG::font_size));
+    display_texts.push_back(DisplayText("Height:      ", &display_height_str, DisplayText::RefType::STR, { 5, text_y += StaticCFG::font_y_spacing }, def_font, StaticCFG::font_size));
 
-    const auto display_height = FinalCFG::init_display_width * ((double)FinalCFG::v_res / FinalCFG::h_res);
-    display_bound = sf::Rect<double>(-FinalCFG::init_display_width / 2, -display_height / 2, FinalCFG::init_display_width, display_height);
+    const auto display_height = StaticCFG::init_display_width * ((double)StaticCFG::v_res / StaticCFG::h_res);
+    display_bound = sf::Rect<double>(-StaticCFG::init_display_width / 2, -display_height / 2, StaticCFG::init_display_width, display_height);
 
     double min_mass = DBL_MAX, max_mass = -DBL_MAX;
     for (uint32_t i = 0; i < body_count; i++) {
@@ -369,14 +375,14 @@ sf::Color mass_to_color(double kg) {
 }
 
 void display_rebound(void) {
-    const auto tmp1 = FinalCFG::right_bound - display_bound.width;
-    const auto tmp2 = FinalCFG::bottom_bound - display_bound.height;
-    if (display_bound.left < FinalCFG::left_bound)
-        display_bound.left = FinalCFG::left_bound;
+    const auto tmp1 = StaticCFG::right_bound - display_bound.width;
+    const auto tmp2 = StaticCFG::bottom_bound - display_bound.height;
+    if (display_bound.left < StaticCFG::left_bound)
+        display_bound.left = StaticCFG::left_bound;
     else if (display_bound.left > tmp1)
         display_bound.left = tmp1;
-    if (display_bound.top < FinalCFG::top_bound)
-        display_bound.top = FinalCFG::top_bound;
+    if (display_bound.top < StaticCFG::top_bound)
+        display_bound.top = StaticCFG::top_bound;
     else if (display_bound.top > tmp2)
         display_bound.top = tmp2;
 }
@@ -387,8 +393,8 @@ void display_follow_body(const Body* follow) {
 }
 
 void move_display(int32_t dx, int32_t dy) {
-    display_bound.left += dx * FinalCFG::move_factor * display_bound.width;
-    display_bound.top += dy * FinalCFG::move_factor * display_bound.height;
+    display_bound.left += dx * StaticCFG::move_factor * display_bound.width;
+    display_bound.top += dy * StaticCFG::move_factor * display_bound.height;
 }
 
 void reset_display(void) {
@@ -397,15 +403,15 @@ void reset_display(void) {
 }
 
 void zoom_display(int32_t zooms) {
-    if (zooms > 0 && display_bound.width >= FinalCFG::max_display_width)
+    if (zooms > 0 && display_bound.width >= StaticCFG::max_display_width)
         return;
-    else if (display_bound.width <= FinalCFG::min_display_width)
+    else if (display_bound.width <= StaticCFG::min_display_width)
         return;
-    const auto resize = pow(FinalCFG::zoom_factor, zooms);
+    const auto resize = pow(StaticCFG::zoom_factor, zooms);
     const auto old_width = display_bound.width;
     const auto old_height = display_bound.height;
     display_bound.width *= resize;
-    display_bound.height = display_bound.width * (1 / FinalCFG::aspect_ratio);
+    display_bound.height = display_bound.width * (1 / StaticCFG::aspect_ratio);
     display_bound.left += (old_width - display_bound.width) / 2;
     display_bound.top += (old_height - display_bound.height) / 2;
 }
@@ -422,10 +428,10 @@ void update_counters(uint32_t iteration) {
     display_width_str = meters_to_string(display_bound.width);
     display_height_str = meters_to_string(display_bound.height);
 
-    if (iteration % FinalCFG::fps_update_freq == 0) {
+    if (iteration % StaticCFG::fps_update_period == 0) {
         static auto x_frames_ago = now;
         const auto x_frames_elapsed = std::chrono::duration_cast<std::chrono::nanoseconds>(now - x_frames_ago).count() / 1e9;
-        fps = FinalCFG::fps_update_freq / x_frames_elapsed;
+        fps = StaticCFG::fps_update_period / x_frames_elapsed;
         time_ratio_str = seconds_to_string(MutCFG::iter_len * fps) + "/s";
         x_frames_ago = now;
         cpu_usage_str = DisplayText::double_to_str(get_cpu_load() * 100.0) + "%";
@@ -433,18 +439,18 @@ void update_counters(uint32_t iteration) {
 }
 
 void draw_standard_grid(sf::RenderWindow& window) {
-    auto horizontal_line = sf::RectangleShape({ float(FinalCFG::h_res), 1 });
-    auto vertical_line = sf::RectangleShape({ 1, float(FinalCFG::v_res) });
+    auto horizontal_line = sf::RectangleShape({ float(StaticCFG::h_res), 1 });
+    auto vertical_line = sf::RectangleShape({ 1, float(StaticCFG::v_res) });
     horizontal_line.setFillColor(sf::Color(50, 50, 50));
     vertical_line.setFillColor(sf::Color(50, 50, 50));
 
-    const double max_dim = std::min(display_bound.width, display_bound.height);
-    const double spacing = pow(10, floor(log10(max_dim)) - 1);
+    const double min_dim = std::min(display_bound.width, display_bound.height);
+    const double spacing = pow(10, floor(log10(min_dim)) - 1);
     const double x2 = display_bound.width + display_bound.left;
     double x = ceil(display_bound.left / spacing) * spacing;
     while (x < x2) {
         const float x_ratio = (x - display_bound.left) / display_bound.width;
-        vertical_line.setPosition({ x_ratio * FinalCFG::h_res, 0 });
+        vertical_line.setPosition({ x_ratio * StaticCFG::h_res, 0 });
         window.draw(vertical_line);
         x += spacing;
     }
@@ -453,52 +459,57 @@ void draw_standard_grid(sf::RenderWindow& window) {
     double y = ceil(display_bound.top / spacing) * spacing;
     while (y < y2) {
         const float y_ratio = (y - display_bound.top) / display_bound.height;
-        horizontal_line.setPosition({ 0, y_ratio * FinalCFG::v_res });
+        horizontal_line.setPosition({ 0, y_ratio * StaticCFG::v_res });
         window.draw(horizontal_line);
         y += spacing;
     }
 }
 
 //void draw_standard_grid2(sf::RenderWindow& window) {
-//    static const double spacing_factor = 5.0;
 //    auto horizontal_line = sf::RectangleShape({ float(FinalCFG::h_res), 1 });
 //    auto vertical_line = sf::RectangleShape({ 1, float(FinalCFG::v_res) });
 //    horizontal_line.setFillColor(sf::Color(50, 50, 50));
 //    vertical_line.setFillColor(sf::Color(50, 50, 50));
-//    const double max_dim = std::min(display_bound.width, display_bound.height);
-//    const double spacing = pow(spacing_factor, floor(log(max_dim, spacing_factor)) - 1);
-//    const float pixel_spacing = spacing / max_dim;
+//    const double min_dim = std::min(display_bound.width, display_bound.height);
+//    const double spacing = pow(FinalCFG::grid_spacing_factor, floor(log(min_dim, FinalCFG::grid_spacing_factor)) - 1);
+//    const float pixel_spacing = min_dim / spacing;
+//    std::cout << pixel_spacing << std::endl;
 //    double x = ceil(display_bound.left / spacing) * spacing;
 //    double y = ceil(display_bound.top / spacing) * spacing;
-//    const double x2 = display_bound.width + display_bound.left;
-//    const double y2 = display_bound.height + display_bound.top;
-//    float x_ratio = (x - display_bound.left) / display_bound.width;
+//    //const double x2 = display_bound.width + display_bound.left;
+//    //const double y2 = display_bound.height + display_bound.top;
+//    const double x_ratio = (x - display_bound.left) / display_bound.width;
+//    const double y_ratio = (y - display_bound.top) / display_bound.height;
+//    float x_px = x_ratio * FinalCFG::h_res;
+//    float y_px = y_ratio * FinalCFG::v_res;
 //
-//
-//    while (x < x2) {
-//        //const float x_ratio = (x - display_bound.left) / display_bound.width;
-//        vertical_line.setPosition({ x_ratio * FinalCFG::h_res, 0 });
+//    while (x_px < FinalCFG::h_res) {
+//        vertical_line.setPosition({ x_px, 0 });
 //        window.draw(vertical_line);
-//        x_ratio += pixel_spacing;
-//        x += spacing;
+//        x_px += pixel_spacing;
+//        //x += spacing;
 //    }
 //
-//
-//
+//    while (y_px < FinalCFG::v_res) {
+//        horizontal_line.setPosition({ 0, y_px });
+//        window.draw(horizontal_line);
+//        y_px += pixel_spacing;
+//        //y += spacing;
+//    }
 //}
 
 
 
 void draw_xy_axis(sf::RenderWindow& window) {
-    auto axis_x = sf::RectangleShape({ float(FinalCFG::h_res), 1 });
-    auto axis_y = sf::RectangleShape({ 1, float(FinalCFG::v_res) });
+    auto axis_x = sf::RectangleShape({ float(StaticCFG::h_res), 1 });
+    auto axis_y = sf::RectangleShape({ 1, float(StaticCFG::v_res) });
     auto y = 0;
     auto x = 0;
 
     const float x_ratio = (x - display_bound.left) / display_bound.width;
     const float y_ratio = (y - display_bound.top) / display_bound.height;
-    axis_x.setPosition({ 0, y_ratio * FinalCFG::v_res });
-    axis_y.setPosition({ x_ratio * FinalCFG::h_res, 0 });
+    axis_x.setPosition({ 0, y_ratio * StaticCFG::v_res });
+    axis_y.setPosition({ x_ratio * StaticCFG::h_res, 0 });
     axis_x.setFillColor(sf::Color(50, 50, 50));
     axis_y.setFillColor(sf::Color(50, 50, 50));
     window.draw(axis_x);
@@ -525,7 +536,7 @@ void draw_texts(sf::RenderWindow& window) {
 }
 
 /* returns most massive object printed */
-const Body* draw_bodies2(sf::RenderWindow& window, Body* bodies, uint32_t body_count) {
+const Body* draw_bodies(sf::RenderWindow& window, Body* bodies, uint32_t body_count) {
     double max_mass = -DBL_MAX;
     const Body* heaviest_body = nullptr;
     sf::CircleShape circle;
@@ -543,7 +554,7 @@ const Body* draw_bodies2(sf::RenderWindow& window, Body* bodies, uint32_t body_c
         }
         const float x_ratio = (body.coords.x - display_bound.left) / display_bound.width;
         const float y_ratio = (body.coords.y - display_bound.top) / display_bound.height;
-        circle.setPosition(x_ratio * FinalCFG::h_res, y_ratio * FinalCFG::v_res);
+        circle.setPosition(x_ratio * StaticCFG::h_res, y_ratio * StaticCFG::v_res);
         const auto body_color = MutCFG::body_coloring ? mass_to_color(body.mass) : sf::Color::White;
         circle.setFillColor(body_color);
         window.draw(circle);
@@ -556,7 +567,7 @@ void engine_loop(sf::RenderWindow& window, Body* bodies, uint32_t body_count) {
     sf::Event event;
     bool paused = false;
     const Body* follow = nullptr;
-    for (uint32_t it = 0; it < FinalCFG::iterations; it++){
+    for (uint32_t it = 0; it < StaticCFG::iterations; it++){
         if (!window.isOpen()) {
             std::cerr << "Internal error: window" << std::endl;
             exit(1);
@@ -579,7 +590,7 @@ void engine_loop(sf::RenderWindow& window, Body* bodies, uint32_t body_count) {
                         paused = false;
                     }
                     else {
-                        DisplayText("Paused", nullptr, DisplayText::RefType::NONE, { (float(FinalCFG::h_res / 2)) - 60 , 50 }, def_font, 40).draw_to(window);
+                        DisplayText("Paused", nullptr, DisplayText::RefType::NONE, { (float(StaticCFG::h_res / 2)) - 60 , 50 }, def_font, 40).draw_to(window);
                         window.display();
                         paused = true;
                     }
@@ -594,22 +605,22 @@ void engine_loop(sf::RenderWindow& window, Body* bodies, uint32_t body_count) {
                     break;
                 }
                 case KEY::O:
-                    if (MutCFG::body_radius_px > MIN_BODY_RADIUS_PX)
+                    if (MutCFG::body_radius_px > StaticCFG::min_body_radius_px)
                         MutCFG::body_radius_px--;
                     break;
                 case KEY::P:
-                    if (MutCFG::body_radius_px < MAX_BODY_RADIUS_PX)
+                    if (MutCFG::body_radius_px < StaticCFG::max_body_radius_px)
                         MutCFG::body_radius_px++;
                     break;
                 case KEY::I:
                     MutCFG::body_coloring = !MutCFG::body_coloring;
                     break;
                 case KEY::LESS:
-                    if (MutCFG::iter_len > MIN_ITER_LEN)
+                    if (MutCFG::iter_len > StaticCFG::min_iter_len)
                         MutCFG::iter_len /= 2;
                     break;
                 case KEY::MORE:
-                    if (MutCFG::iter_len < MAX_ITER_LEN)
+                    if (MutCFG::iter_len < StaticCFG::max_iter_len)
                         MutCFG::iter_len *= 2;
                     break;
                 case KEY::UP:
@@ -650,7 +661,7 @@ void engine_loop(sf::RenderWindow& window, Body* bodies, uint32_t body_count) {
             move_display(dx, dy);
         display_rebound();
         update_counters(it);
-        follow = draw_bodies2(window, bodies, body_count);
+        follow = draw_bodies(window, bodies, body_count);
         draw_grid(window);
         draw_texts(window);
         window.display();
@@ -658,9 +669,9 @@ void engine_loop(sf::RenderWindow& window, Body* bodies, uint32_t body_count) {
         frames++;
     }
     window.clear();
-    draw_bodies2(window, bodies, body_count);
+    draw_bodies(window, bodies, body_count);
     draw_texts(window);
-    DisplayText("Simulation Complete", nullptr, DisplayText::RefType::NONE, { (float(FinalCFG::h_res / 2)) - 190 , 50 }, def_font, 40).draw_to(window);
+    DisplayText("Simulation Complete", nullptr, DisplayText::RefType::NONE, { (float(StaticCFG::h_res / 2)) - 190 , 50 }, def_font, 40).draw_to(window);
     window.display();
 
 
@@ -679,40 +690,40 @@ void parse_args(int argc, const char** argv){
     int32_t idx;
     IO::ArgParser arg_parser(argc, argv);
     try{
-        if ((idx = arg_parser.get_next_idx("-in")) > 0)
-            FinalCFG::input_file = arg_parser.get(idx);
+        if ((idx = arg_parser.get_next_idx("--in")) > 0)
+            StaticCFG::input_file = arg_parser.get(idx);
 
-        if ((idx = arg_parser.get_next_idx("-out")) > 0)
-            FinalCFG::output_file = arg_parser.get(idx);
+        if ((idx = arg_parser.get_next_idx("--out")) > 0)
+            StaticCFG::output_file = arg_parser.get(idx);
 
-        if ((idx = arg_parser.get_next_idx("-it")) > 0)
-            FinalCFG::iterations = std::stoi(arg_parser.get(idx));
+        if ((idx = arg_parser.get_next_idx("--it")) > 0)
+            StaticCFG::iterations = std::stoi(arg_parser.get(idx));
 
-        if ((idx = arg_parser.get_next_idx("-it_len")) > 0)
+        if ((idx = arg_parser.get_next_idx("--it_len")) > 0)
             MutCFG::iter_len = std::stod(arg_parser.get(idx));
 
-        if ((idx = arg_parser.get_next_idx("-theta")) > 0){
-            FinalCFG::theta = std::stod(arg_parser.get(idx));
-            FinalCFG::theta_2 = FinalCFG::theta * FinalCFG::theta;
+        if ((idx = arg_parser.get_next_idx("--theta")) > 0){
+            StaticCFG::theta = std::stod(arg_parser.get(idx));
+            StaticCFG::theta_2 = StaticCFG::theta * StaticCFG::theta;
         }
 
-        if ((idx = arg_parser.get_next_idx("-threads")) > 0)
-            FinalCFG::thread_count = std::stod(arg_parser.get(idx));
+        if ((idx = arg_parser.get_next_idx("--threads")) > 0)
+            StaticCFG::thread_count = std::stod(arg_parser.get(idx));
 
-        if ((idx = arg_parser.get_next_idx("-h_res")) > 0) {
-            using namespace FinalCFG;
+        if ((idx = arg_parser.get_next_idx("--h_res")) > 0) {
+            using namespace StaticCFG;
             h_res = std::stoi(arg_parser.get(idx));
             aspect_ratio = double(h_res) / v_res;
         }
 
-        if ((idx = arg_parser.get_next_idx("-v_res")) > 0) {
-            using namespace FinalCFG;
+        if ((idx = arg_parser.get_next_idx("--v_res")) > 0) {
+            using namespace StaticCFG;
             v_res = std::stoi(arg_parser.get(idx));
             aspect_ratio = double(h_res) / v_res;
         }
 
-        if ((idx = arg_parser.get_next_idx("-max_fps")) > 0)
-            FinalCFG::h_res = std::stoi(arg_parser.get(idx));
+        if ((idx = arg_parser.get_next_idx("--max_fps")) > 0)
+            StaticCFG::h_res = std::stoi(arg_parser.get(idx));
 
     }
     catch (const std::string& ex){
@@ -731,9 +742,10 @@ void parse_args(int argc, const char** argv){
 
 void print_info(void) {
     std::cout << "Configuration:\n";
-    FinalCFG::print();
+    StaticCFG::print();
     MutCFG::print();    
     std::cout << "\nKeybinds:\n";
+    std::cout << "\t<ESC>: Pause sim\n";
     std::cout << "\tO: decrease body radius [px]\n";
     std::cout << "\tP: increase body radius [px]\n";
     std::cout << "\tI: enable or disable body coloring\n";
@@ -748,25 +760,25 @@ void print_info(void) {
     std::cout << "\tR: Resets view to point at (x, y) = (0, 0)\n";
     std::cout << "\tF: Camera follows heaviest body in sight\n";
     std::cout << "\tG: Toggle grid\n";
-
 }
 
 int main(int argc, const char** argv){
+    std::cout << log(1234567, 10) << " vs " << log10(1234567) << std::endl;
     std::vector<Body> bodies;
     parse_args(argc, argv);
     print_info();
-    omp_set_num_threads(FinalCFG::thread_count);
-    parse_input(FinalCFG::input_file, bodies);
-    FinalCFG::quad_pool_size = 400 + bodies.size() * 4;
+    omp_set_num_threads(StaticCFG::thread_count);
+    parse_input(StaticCFG::input_file, bodies);
+    StaticCFG::quad_pool_size = 400 + bodies.size() * 4;
     init_gui(bodies.data(), bodies.size());
-    sf::RenderWindow window(sf::VideoMode(FinalCFG::h_res, FinalCFG::v_res), FinalCFG::window_name);
-    window.setFramerateLimit(FinalCFG::max_fps);
+    sf::RenderWindow window(sf::VideoMode(StaticCFG::h_res, StaticCFG::v_res), StaticCFG::window_name);
+    window.setFramerateLimit(StaticCFG::max_fps);
     start = std::chrono::high_resolution_clock::now();
     engine_loop(window, bodies.data(), bodies.size());
     const auto end = std::chrono::high_resolution_clock::now();
     const auto elapsed = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count() / 1e9;
-    //std::cout << "Seconds: " << elapsed << std::endl;
+    std::cout << "\n\nSeconds: " << elapsed << std::endl;
     //std::cout << "Seconds per iteration: " << elapsed / FinalCFG::iterations << std::endl;
-    write_output(FinalCFG::output_file, bodies);
+    write_output(StaticCFG::output_file, bodies);
     std::cout << "Jobs done!" << std::endl;
 }
