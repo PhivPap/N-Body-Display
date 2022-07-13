@@ -20,7 +20,7 @@ public:
 	}
 
 	inline void draw_to(sf::RenderWindow& window) {
-		std::string txt = base_text;
+		sstr txt = base_text;
 		
 		switch (ref_type) {
 			case RefType::UINT32: 
@@ -32,7 +32,7 @@ public:
 				break;
 			}
 			case RefType::STR:
-				txt += *(std::string*)ref;
+				txt += *(sstr*)ref;
 				break;
 			case RefType::BOOL:
 				txt += *static_cast<const bool*>(ref) ? "True" : "False";
@@ -45,7 +45,7 @@ public:
 		window.draw(sf_text);
 	}
 
-	static inline std::string double_to_str(f64 val){
+	static inline sstr double_to_str(f64 val){
 		std::stringstream ss;
 		if (val < 1e5)
 			ss << std::fixed << std::setprecision(2) << val;

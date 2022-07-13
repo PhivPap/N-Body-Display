@@ -3,7 +3,7 @@
 
 IO::ArgParser::ArgParser(int argc, const char** argv) : argc(argc), argv(argv) {}
 
-i32 IO::ArgParser::get_next_idx(const std::string& str){
+i32 IO::ArgParser::get_next_idx(const sstr& str){
     i32 idx = 0;
     for (i32 i = 0; i < argc; i++)
         if (str == argv[i])
@@ -14,8 +14,8 @@ i32 IO::ArgParser::get_next_idx(const std::string& str){
     return -1;
 }
 
-std::string IO::ArgParser::get(u32 idx){
+sstr IO::ArgParser::get(u32 idx){
     if (idx >= argc)
-        throw std::string("ArgParser error: index out of bounds.");
-    return std::string(argv[idx]);
+        throw sstr("ArgParser error: index out of bounds.");
+    return sstr(argv[idx]);
 }

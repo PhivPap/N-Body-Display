@@ -1,11 +1,11 @@
 #include "InputOutput.h"
 #include <fstream>
 
-IO::Writer::Writer(const std::string& path){
+IO::Writer::Writer(const sstr& path){
     output_file = std::ofstream(path);
     if (!output_file.is_open()) {
         failed = true;
-        throw std::string("Unable to open output file at: '" + path + "'.");
+        throw sstr("Unable to open output file at: '" + path + "'.");
     }
     output_file << "id\tmass\tx\ty\tvel_x\tvel_y\n";
 }
@@ -17,7 +17,7 @@ IO::Writer::~Writer(void){
 
 void IO::Writer::write_body(const IO::Body& io_body){
     if (failed)
-        throw std::string("Writer failed.");
+        throw sstr("Writer failed.");
     output_file << io_body.id << '\t'
         << io_body.mass << '\t'
         << io_body.x << '\t'

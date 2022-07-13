@@ -20,7 +20,7 @@ namespace IO {
     class Parser {
     public:
         Parser(void) = delete;
-        Parser(const std::string& path);
+        Parser(const sstr& path);
         ~Parser(void);
         int next_body_info(Body& io_body);
 
@@ -33,7 +33,7 @@ namespace IO {
 
     class Writer {
     public:
-        Writer(const std::string& path);
+        Writer(const sstr& path);
         ~Writer(void);
         void write_body(const Body& io_body);
 
@@ -46,8 +46,8 @@ namespace IO {
     public:
         ArgParser(void) = delete;
         ArgParser(int argc, const char** argv);
-        i32 get_next_idx(const std::string& str);  // returns - 1 if not found and -2 if next does not exist
-        std::string get(u32 idx);
+        i32 get_next_idx(const sstr& str);  // returns - 1 if not found and -2 if next does not exist
+        sstr get(u32 idx);
     private:
         const int argc;
         const char** argv;

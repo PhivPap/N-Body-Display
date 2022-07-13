@@ -40,8 +40,8 @@ namespace StaticCFG { // never reset after init
     const u32 fps_update_period = 30;     // fps info will be updated every 'fps_update_period' frames
     const f64 grid_spacing_factor = 4.0;
 
-    std::string input_file = "../BodyFiles/in/a12a.tsv";
-    std::string output_file = "../BodyFiles/out/bh_omp_out.tsv";
+    sstr input_file = "../BodyFiles/in/a12a.tsv";
+    sstr output_file = "../BodyFiles/out/bh_omp_out.tsv";
     u32 iterations = 100000;
     u32 thread_count = 8;
     f64 theta = 0.50;
@@ -86,7 +86,7 @@ namespace MutCFG {
         enum GridStatus { None, XY, Standard };
         GridStatus grid_status = None;
 
-        inline std::string grid_status_to_str(GridStatus gs) {
+        inline sstr grid_status_to_str(GridStatus gs) {
             switch (gs) {
             case None:
                 return "None";
@@ -105,7 +105,7 @@ namespace MutCFG {
     }*/
 };
 
-static inline std::string grid_status_to_str(GridStatus gs) {
+static inline sstr grid_status_to_str(GridStatus gs) {
     switch (gs) {
         case GridStatus::None:      return "None";
         case GridStatus::XY:        return "X-Y axis";
@@ -120,27 +120,27 @@ f64 merge_distance;
 f64 max_abs_vel = 1e8;
 u32 body_count_gui = 0;
 
-void parse_input(const std::string& input_path, std::vector<Body>& bodies){
+void parse_input(const sstr& input_path, std::vector<Body>& bodies){
     try {
         IO::Parser parser(input_path);
         auto io_body = IO::Body();
         while (parser.next_body_info(io_body) == 0)
             bodies.push_back(Body(io_body.mass, { io_body.x, io_body.y }, io_body.vel_x, io_body.vel_y));
     }
-    catch (const std::string& e){
+    catch (const sstr& e){
         std::cout << "Parse error: " << e << std::endl;
         exit(1);
     }
 }
 
-void write_output(const std::string& output_path, const std::vector<Body>& bodies){
+void write_output(const sstr& output_path, const std::vector<Body>& bodies){
     try {
         IO::Writer writer(output_path);
         u32 id = 0;
         for (const auto& body : bodies)
             writer.write_body(IO::Body(id++, body.mass, body.coords.x, body.coords.y, body.vel_x, body.vel_y));
     }
-    catch (const std::string& e){
+    catch (const sstr& e){
         std::cout << "Write error: " << e << std::endl;
         exit(1);
     }
@@ -261,12 +261,12 @@ std::vector<DisplayText> display_texts;
 f64 elapsed = 0.0;
 f64 min_mass_log10, max_mass_log10;
 f64 sim_elapsed = 0;
-std::string iter_len_str;
-std::string sim_elapsed_str;
-std::string display_width_str, display_height_str;
-std::string time_ratio_str;
-std::string cpu_usage_str;
-std::string grid_status_str;
+sstr iter_len_str;
+sstr sim_elapsed_str;
+sstr display_width_str, display_height_str;
+sstr time_ratio_str;
+sstr cpu_usage_str;
+sstr grid_status_str;
 u32 frames = 0;
 f64 fps;
 f64 universe_width = 0.0, universe_height = 0.0, universe_x1 = 0.0, universe_y1 = 0.0;
@@ -351,7 +351,7 @@ f32 get_cpu_load(void){
     return GetSystemTimes(&idleTime, &kernelTime, &userTime) ? calc_cpu_load(file_time_to_int64(idleTime), file_time_to_int64(kernelTime) + file_time_to_int64(userTime)) : -1.0f;
 }
 
-std::string seconds_to_string(f64 s) {
+sstr seconds_to_string(f64 s) {
     if (s < 1e-6)       return DisplayText::double_to_str(s * 1e9) + " ns";
     if (s < 1e-3)       return DisplayText::double_to_str(s * 1e6) + " us";
     if (s < 1.0)        return DisplayText::double_to_str(s * 1e3) + " ms";
@@ -362,7 +362,7 @@ std::string seconds_to_string(f64 s) {
     else                return DisplayText::double_to_str(s / 31556952) + " years";
 }
 
-std::string meters_to_string(f64 m) {
+sstr meters_to_string(f64 m) {
     if (m < 1e-6)               return DisplayText::double_to_str(m * 1e9) + " nm";
     if (m < 1e-3)               return DisplayText::double_to_str(m * 1e6) + " um";
     if (m < 1)                  return DisplayText::double_to_str(m * 1e3) + " mm";
@@ -776,7 +776,7 @@ void parse_args(int argc, const char** argv){
         if ((idx = arg_parser.get_next_idx("--max_fps")) > 0)
             StaticCFG::h_res = std::stoi(arg_parser.get(idx));
     }
-    catch (const std::string& ex){
+    catch (const sstr& ex){
         std::cout << "Argument parsing exception: " << ex << std::endl;
         exit(1);
     }
