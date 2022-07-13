@@ -511,11 +511,9 @@ void draw_standard_grid(sf::RenderWindow& window) {
 void draw_xy_axis(sf::RenderWindow& window) {
     auto axis_x = sf::RectangleShape({ f32(StaticCFG::h_res), 1 });
     auto axis_y = sf::RectangleShape({ 1, f32(StaticCFG::v_res) });
-    auto y = 0;
-    auto x = 0;
 
-    const f32 x_ratio = (x - display_bound.left) / display_bound.width;
-    const f32 y_ratio = (y - display_bound.top) / display_bound.height;
+    const f32 x_ratio = -display_bound.left / display_bound.width;
+    const f32 y_ratio = -display_bound.top / display_bound.height;
     axis_x.setPosition({ 0, y_ratio * StaticCFG::v_res });
     axis_y.setPosition({ x_ratio * StaticCFG::h_res, 0 });
     axis_x.setFillColor(sf::Color(50, 50, 50));
