@@ -12,11 +12,13 @@
 #include <Windows.h>
 #include <assert.h>
 
-namespace KEY { 
-    enum { ESC = 36, A = 0, D = 3, F = 5, G = 6, I = 8, O = 14, P = 15, R = 17, S = 18, W = 22, LESS = 49, MORE = 50, LEFT = 71, RIGHT = 72, UP = 73, DOWN = 74 };
-}
+// enum class wont work here :(
+//namespace Key { 
+//    enum { ESC = 36, A = 0, D = 3, F = 5, G = 6, I = 8, O = 14, P = 15, R = 17, S = 18, W = 22, LESS = 49, MORE = 50, LEFT = 71, RIGHT = 72, UP = 73, DOWN = 74 };
+//}
 
-
+enum class Key : uint8_t { ESC = 36, A = 0, D = 3, F = 5, G = 6, I = 8, O = 14, P = 15, R = 17, S = 18, W = 22, LESS = 49, MORE = 50, LEFT = 71, RIGHT = 72, UP = 73, DOWN = 74 };
+enum class GridStatus : uint8_t { None, XY, Standard };
 
 namespace StaticCFG { // never reset after init
     uint32_t h_res = 1600;
@@ -74,6 +76,7 @@ namespace MutCFG {
     uint32_t body_radius_px = 2;
     bool body_coloring = true;
     double iter_len = 1e4;
+    GridStatus grid_status = GridStatus::None;
 
     void print(void) {
         std::cout << "\tCamera follow largest body in scope: " << (camera_follow_body ? "enabled" : "disabled") << std::endl;
@@ -82,7 +85,7 @@ namespace MutCFG {
         std::cout << "\tTime step[s]: " << iter_len << std::endl;
     }
 
-    namespace GridStatus {
+    /*namespace GridStatus {
         const uint8_t option_count = 3;
         enum GridStatus { None, XY, Standard };
         GridStatus grid_status = None;
@@ -103,10 +106,17 @@ namespace MutCFG {
                 break;
             }
         }
-    }
+    }*/
 };
 
-
+static inline std::string grid_status_to_str(GridStatus gs) {
+    switch (gs) {
+        case GridStatus::None:      return "None";
+        case GridStatus::XY:        return "X-Y axis";
+        case GridStatus::Standard:  return "Standard";
+        default:                    assert(0);
+    }
+}
 
 // ------------------------ SIMULATION ------------------------
 const double G = 6.67e-11; // Gravitational constant
@@ -275,7 +285,7 @@ void init_gui(const Body* bodies, uint32_t body_count) {
     const uint32_t cfg_stats_dist = 200;
     float text_y = 0;
     body_count_gui = body_count;
-    grid_status_str = MutCFG::GridStatus::grid_status_to_str(MutCFG::GridStatus::grid_status);
+    grid_status_str = grid_status_to_str(MutCFG::grid_status);
 
     display_texts.push_back(DisplayText("Iterations:  ", &StaticCFG::iterations, DisplayText::RefType::UINT32, { 5, text_y += StaticCFG::font_y_spacing }, def_font, StaticCFG::font_size));
     display_texts.push_back(DisplayText("Time step:   ", &iter_len_str, DisplayText::RefType::STR, { 5, text_y += StaticCFG::font_y_spacing }, def_font, StaticCFG::font_size));
@@ -519,12 +529,11 @@ void draw_xy_axis(sf::RenderWindow& window) {
 }
 
 void draw_grid(sf::RenderWindow& window) {
-    using namespace MutCFG::GridStatus;
-    switch (grid_status) {
-    case XY:
+    switch (MutCFG::grid_status) {
+    case GridStatus::XY:
         draw_xy_axis(window);
         break;
-    case Standard:
+    case GridStatus::Standard:
         draw_standard_grid(window);
         break;
     default:
@@ -585,9 +594,9 @@ void engine_loop(sf::RenderWindow& window, Body* bodies, uint32_t body_count) {
                 zoom = -event.mouseWheelScroll.delta;
                 break;
             case sf::Event::KeyPressed:
-                //std::cout << event.key.code << std::endl;
-                switch (event.key.code){
-                case KEY::ESC:
+                //std::cout << event.Key.code << std::endl;
+                switch (static_cast<enum class Key>(event.key.code)){
+                case Key::ESC:
                     if (paused) {
                         paused = false;
                     }
@@ -597,51 +606,50 @@ void engine_loop(sf::RenderWindow& window, Body* bodies, uint32_t body_count) {
                         paused = true;
                     }
                     break;
-                case KEY::F:
+                case Key::F:
                     MutCFG::camera_follow_body = !MutCFG::camera_follow_body;
                     break;
-                case KEY::G: {
-                    using namespace MutCFG::GridStatus;
-                    grid_status = static_cast<GridStatus>((grid_status + 1) % option_count);
-                    grid_status_str = grid_status_to_str(grid_status);
+                case Key::G: {
+                    MutCFG::grid_status = static_cast<GridStatus>((static_cast<uint8_t>(MutCFG::grid_status) + 1) % 3);
+                    grid_status_str = grid_status_to_str(MutCFG::grid_status);
                     break;
                 }
-                case KEY::O:
+                case Key::O:
                     if (MutCFG::body_radius_px > StaticCFG::min_body_radius_px)
                         MutCFG::body_radius_px--;
                     break;
-                case KEY::P:
+                case Key::P:
                     if (MutCFG::body_radius_px < StaticCFG::max_body_radius_px)
                         MutCFG::body_radius_px++;
                     break;
-                case KEY::I:
+                case Key::I:
                     MutCFG::body_coloring = !MutCFG::body_coloring;
                     break;
-                case KEY::LESS:
+                case Key::LESS:
                     if (MutCFG::iter_len > StaticCFG::min_iter_len)
                         MutCFG::iter_len /= StaticCFG::speedup_factor;
                     break;
-                case KEY::MORE:
+                case Key::MORE:
                     if (MutCFG::iter_len < StaticCFG::max_iter_len)
                         MutCFG::iter_len *= StaticCFG::speedup_factor;
                     break;
-                case KEY::UP:
-                case KEY::W:
+                case Key::UP:
+                case Key::W:
                     dy--;
                     break;
-                case KEY::DOWN:
-                case KEY::S:
+                case Key::DOWN:
+                case Key::S:
                     dy++;
                     break;
-                case KEY::LEFT:
-                case KEY::A:
+                case Key::LEFT:
+                case Key::A:
                     dx--;
                      break;
-                case KEY::RIGHT:
-                case KEY::D:
+                case Key::RIGHT:
+                case Key::D:
                     dx++;
                     break;
-                case KEY::R:
+                case Key::R:
                     dx = dy = 0;
                     if (!MutCFG::camera_follow_body)
                         reset_display();
