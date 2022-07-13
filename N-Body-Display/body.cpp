@@ -2,7 +2,7 @@
 #include <iostream>
 
 
-Body::Body(double mass, Point coords, double vel_x, double vel_y):
+Body::Body(f64 mass, Point coords, f64 vel_x, f64 vel_y):
     mass(mass), coords(coords), vel_x(vel_x), vel_y(vel_y) {}
 
 

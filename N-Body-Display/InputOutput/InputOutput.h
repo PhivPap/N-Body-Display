@@ -4,14 +4,15 @@
 #include <fstream>
 #include <string>
 #include <vector>
+#include "../MyTypes.h"
 
 namespace IO {
     class Body {
     public:
-        uint32_t id;
-        double mass, x, y, vel_x, vel_y;
+        u32 id;
+        f64 mass, x, y, vel_x, vel_y;
         Body(void);
-        Body(uint32_t id, double mass, double x, double y, double vel_x, double vel_y);
+        Body(u32 id, f64 mass, f64 x, f64 y, f64 vel_x, f64 vel_y);
         void copy_from(const Body& b);
     };
 
@@ -25,7 +26,7 @@ namespace IO {
 
     private:
         bool failed = false;
-        uint32_t parsed_bodies = 0;
+        u32 parsed_bodies = 0;
         std::ifstream input_file;
     };
 
@@ -45,8 +46,8 @@ namespace IO {
     public:
         ArgParser(void) = delete;
         ArgParser(int argc, const char** argv);
-        int32_t get_next_idx(const std::string& str);  // returns - 1 if not found and -2 if next does not exist
-        std::string get(uint32_t idx);
+        i32 get_next_idx(const std::string& str);  // returns - 1 if not found and -2 if next does not exist
+        std::string get(u32 idx);
     private:
         const int argc;
         const char** argv;

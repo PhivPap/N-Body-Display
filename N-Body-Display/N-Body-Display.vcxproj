@@ -182,6 +182,7 @@
     <ClInclude Include="body.h" />
     <ClInclude Include="DisplayText.h" />
     <ClInclude Include="InputOutput\InputOutput.h" />
+    <ClInclude Include="MyTypes.h" />
     <ClInclude Include="quad.h" />
     <ClInclude Include="util.h" />
   </ItemGroup>

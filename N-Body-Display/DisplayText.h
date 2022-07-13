@@ -1,5 +1,6 @@
 #pragma once
 #include "SFML/Graphics.hpp"
+#include "MyTypes.h"
 #include <sstream>
 #include <string>
 #include <variant>
@@ -12,7 +13,7 @@ public:
 
 	DisplayText(void) = delete;
 
-	inline DisplayText(const char* base_text, const void* ref, RefType ref_type, const sf::Vector2f& pos, const sf::Font& font, const uint32_t font_size):
+	inline DisplayText(const char* base_text, const void* ref, RefType ref_type, const sf::Vector2f& pos, const sf::Font& font, const u32 font_size):
 	base_text(base_text), ref(ref), ref_type(ref_type) {
 		sf_text = sf::Text("", font, font_size);
 		sf_text.setPosition(pos);
@@ -23,10 +24,10 @@ public:
 		
 		switch (ref_type) {
 			case RefType::UINT32: 
-				txt += std::to_string(*static_cast<const uint32_t*>(ref));
+				txt += std::to_string(*static_cast<const u32*>(ref));
 				break;
 			case RefType::DOUBLE: {
-				double val = *static_cast<const double*>(ref);
+				f64 val = *static_cast<const f64*>(ref);
 				txt += double_to_str(val);
 				break;
 			}
@@ -44,7 +45,7 @@ public:
 		window.draw(sf_text);
 	}
 
-	static inline std::string double_to_str(double val){
+	static inline std::string double_to_str(f64 val){
 		std::stringstream ss;
 		if (val < 1e5)
 			ss << std::fixed << std::setprecision(2) << val;

@@ -38,7 +38,7 @@ static std::vector<std::string> tokenize_string(const std::string& str, char del
 }
 
 // returns 1 if all parsed bodies were already copied, otherwise 0.
-int IO::Parser::next_body_info(IO::Body& io_body_ref){
+i32 IO::Parser::next_body_info(IO::Body& io_body_ref){
     std::string line;
     if (failed)
         throw std::string("Parser failed.");

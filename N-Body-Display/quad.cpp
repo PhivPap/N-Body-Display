@@ -2,22 +2,22 @@
 #include <assert.h>
 #include <chrono>
 
-const uint8_t MAX_DEPTH = 40;
+const u8 MAX_DEPTH = 40;
 //std::vector<Quad> Quad::pool;
 Quad *Quad::pool;
-uint32_t Quad::pool_size;
-uint32_t Quad::pool_idx;
+u32 Quad::pool_size;
+u32 Quad::pool_idx;
 
 Quad::Quad(void) : mass(0), body_count(0), center_of_mass({0, 0}){
     contained_bodies.reserve(40);
 }
 
 // this constructor is used to generate the root of the quad tree
-Quad::Quad(Body *bodies, uint32_t body_count, const Area &area) : center_of_mass({0, 0}), body_count(0),
+Quad::Quad(Body *bodies, u32 body_count, const Area &area) : center_of_mass({0, 0}), body_count(0),
                                                                   mass(0), area(area) {
     diag_len_2 = area.diagonal_length_2();
     contained_bodies.reserve(body_count);
-    for (uint32_t i = 0; i < body_count; i++) {
+    for (u32 i = 0; i < body_count; i++) {
         Body* b = &(bodies[i]);
         if (!b->ignore)
             insert_body(b);
@@ -38,7 +38,7 @@ void Quad::insert_body(Body *body){
     body_count++;
 }
 
-void Quad::compute_bhtree_recursive(uint8_t depth){
+void Quad::compute_bhtree_recursive(u8 depth){
     if (body_count == 0)
         return;
     else if (body_count == 1){
@@ -69,10 +69,10 @@ void Quad::compute_bhtree_recursive(uint8_t depth){
     bot_left_quad->set_area({area.x1, center.x, center.y, area.y2});
     bot_right_quad->set_area({center.x, area.x2, center.y, area.y2});
 
-    const uint32_t n = contained_bodies.size();
+    const u32 n = contained_bodies.size();
     auto cb = contained_bodies.data();
 
-    for (uint32_t i = 0; i < n; i++) {
+    for (u32 i = 0; i < n; i++) {
         Body *body = cb[i];
         const Point &coords = body->coords;
 
@@ -109,7 +109,7 @@ void Quad::compute_bhtree_recursive(uint8_t depth){
 
 
 
-void Quad::set_pool(uint32_t init_size){
+void Quad::set_pool(u32 init_size){
     /*pool.reserve(init_size);*/
     pool_idx = 0;
     pool_size = init_size;
@@ -120,12 +120,12 @@ void Quad::reset_pool(void){
     delete[] pool;
 }
 
-uint32_t Quad::pool_get_idx(void){
-    const uint32_t curr_idx = pool_idx;
+u32 Quad::pool_get_idx(void){
+    const u32 curr_idx = pool_idx;
     pool_idx += 4;
     assert(pool_idx < pool_size);
     return curr_idx;
-    /*uint32_t idx = pool.size();
+    /*u32 idx = pool.size();
     pool.push_back(Quad());
     pool.push_back(Quad());
     pool.push_back(Quad());
@@ -133,6 +133,6 @@ uint32_t Quad::pool_get_idx(void){
     return idx;*/
 }
 
-//Quad* Quad::get_quad(uint32_t idx) {
+//Quad* Quad::get_quad(u32 idx) {
 //    return &pool[idx];
 //}

@@ -56,5 +56,8 @@
     <ClInclude Include="InputOutput\InputOutput.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="MyTypes.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>
