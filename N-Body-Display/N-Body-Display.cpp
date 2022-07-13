@@ -12,11 +12,6 @@
 #include <Windows.h>
 #include <assert.h>
 
-// enum class wont work here :(
-//namespace Key { 
-//    enum { ESC = 36, A = 0, D = 3, F = 5, G = 6, I = 8, O = 14, P = 15, R = 17, S = 18, W = 22, LESS = 49, MORE = 50, LEFT = 71, RIGHT = 72, UP = 73, DOWN = 74 };
-//}
-
 enum class Key : uint8_t { ESC = 36, A = 0, D = 3, F = 5, G = 6, I = 8, O = 14, P = 15, R = 17, S = 18, W = 22, LESS = 49, MORE = 50, LEFT = 71, RIGHT = 72, UP = 73, DOWN = 74 };
 enum class GridStatus : uint8_t { None, XY, Standard };
 
@@ -696,10 +691,55 @@ void engine_loop(sf::RenderWindow& window, Body* bodies, uint32_t body_count) {
     }
 }
 
+void print_command_line_args(void) {
+    std::cout << "Command line arguments:\n"
+        << "\t--help / -h:        Prints this message.\n"
+        << "\t--in <string>:      Specifies input file.\n"
+        << "\t--out <string>:     Specifies output file.\n"
+        << "\t--it <uint>:        Specifies total number of iterations.\n"
+        << "\t--it_len <double>:  Specifies the simulated duration represented by one iteration in seconds.\n"
+        << "\t--theta <double>:   Specifies the accuracy of the Barnes-Hut approximation. No approximation if theta = 0.\n"
+        << "\t--threads <uint>:   Specifies the number of requested OpenMP threads. Pointless to set higher than the number of logical cores.\n"
+        << "\t--h_res <uint>:     Specifies the horizontal resolution of the window in pixels.\n"
+        << "\t--b_res <uint>:     Specifies the vertical resolution of the window  in pixels.\n"
+        << "\t--max_fps <uint>:   Specifies the maximum fps. This also affects the upper bound of the speed of the simulation.";
+}
+
+void print_keybinds(void) {
+    std::cout << "\nKeybinds:\n"
+        << "\t<ESC>:           Pause sim\n"
+        << "\tO:               Decrease body radius [px]\n"
+        << "\tP:               Increase body radius [px]\n"
+        << "\tI:               Enable or disable body coloring\n"
+        << "\t<scroll up>:     Zoom in\n"
+        << "\t<scroll down>:   Zoom out\n"
+        << "\t<:               Slowdown the simulation (halves timestep)\n"
+        << "\t>:               Speedup the simulation\n"
+        << "\tW/<up arrow>:    Moves view north\n"
+        << "\tS/<down arrow>:  Moves view south\n"
+        << "\tA/<left arrow>:  Moves view west\n"
+        << "\tD/<right arrow>: Moves view east\n"
+        << "\tR:               Resets view to point at (x, y) = (0, 0)\n"
+        << "\tF:               Camera follows heaviest body in sight\n"
+        << "\tG:               Toggle grid\n";
+}
+
+void print_config(void) {
+    std::cout << "Configuration:\n";
+    StaticCFG::print();
+    MutCFG::print();
+}
+
 void parse_args(int argc, const char** argv){
     int32_t idx;
     IO::ArgParser arg_parser(argc, argv);
     try{
+        if (((idx = arg_parser.get_next_idx("--help")) != -1) || ((idx = arg_parser.get_next_idx("-h")) != -1)) {
+            print_command_line_args();
+            print_keybinds();
+            exit(0);
+        }
+
         if ((idx = arg_parser.get_next_idx("--in")) > 0)
             StaticCFG::input_file = arg_parser.get(idx);
 
@@ -734,7 +774,6 @@ void parse_args(int argc, const char** argv){
 
         if ((idx = arg_parser.get_next_idx("--max_fps")) > 0)
             StaticCFG::h_res = std::stoi(arg_parser.get(idx));
-
     }
     catch (const std::string& ex){
         std::cout << "Argument parsing exception: " << ex << std::endl;
@@ -750,32 +789,11 @@ void parse_args(int argc, const char** argv){
     }
 }
 
-void print_info(void) {
-    std::cout << "Configuration:\n";
-    StaticCFG::print();
-    MutCFG::print();    
-    std::cout << "\nKeybinds:\n";
-    std::cout << "\t<ESC>: Pause sim\n";
-    std::cout << "\tO: decrease body radius [px]\n";
-    std::cout << "\tP: increase body radius [px]\n";
-    std::cout << "\tI: enable or disable body coloring\n";
-    std::cout << "\t<scroll up>: zoom in\n";
-    std::cout << "\t<scroll down>: zoom out\n";
-    std::cout << "\t<: slowdown the simulation (halves timestep)\n";
-    std::cout << "\t>: speedup the simulation (doubles timestep)\n";
-    std::cout << "\tW/<up arrow>: moves view by a small factor north\n";
-    std::cout << "\tS/<down arrow>: moves view by a small factor south\n";
-    std::cout << "\tA/<left arrow>: moves view by a small factor west\n";
-    std::cout << "\tD/<right arrow>: moves view by a small factor east\n";
-    std::cout << "\tR: Resets view to point at (x, y) = (0, 0)\n";
-    std::cout << "\tF: Camera follows heaviest body in sight\n";
-    std::cout << "\tG: Toggle grid\n";
-}
-
 int main(int argc, const char** argv){
     std::vector<Body> bodies;
     parse_args(argc, argv);
-    print_info();
+    print_config();
+    print_keybinds();
     omp_set_num_threads(StaticCFG::thread_count);
     parse_input(StaticCFG::input_file, bodies);
     StaticCFG::quad_pool_size = 400 + bodies.size() * 4;
